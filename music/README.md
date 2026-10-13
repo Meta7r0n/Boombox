@@ -1,0 +1,41 @@
+# Music catalog
+
+`catalog.json` is the expandable starter discography. Add an original or licensed MP3/WAV in `public/music/`, then add a catalog entry with a stable `starter-...` id, title, artist, duration in seconds, description, color and `/music/...` URL. Run the normal build; `scripts/prepare-music.mjs` updates the embedded catalog and player behavior in the portable HTML. Retain old ids and audio URLs because published cassettes keep those references.
+
+The initial three recordings are original synthesized compositions created by `compose-starters.py` without sampled recordings. The script requires NumPy and ffmpeg, but audio generation is not part of deployment. The resulting MP3s are committed assets.
+
+`src/index.html` preserves the existing standalone Canvas workshop. `src/music.js` is the editable music behavior inserted during the build. The root route serves the workshop HTML, while private `/api` routes store uploaded audio in R2 and user-owned track/cassette records in D1. Every library query and audio request checks the Site-provided user identity. No browser storage is authoritative for saved music.
+
+A published cassette is an ordered snapshot of 1–50 track references. Publishing is personal library creation, not public distribution. Copy a cassette into the draft to make another version. Uploads are MP3 or WAV, up to 50 MB each; format signatures and browser decodability are checked. Uploaded files and saved cassettes are accessible in the live authenticated Site. HTML exports include the visual workshop and starter songs for offline playback, without copying private uploaded recordings.
+
+`node tests/music-api.test.mjs` checks D1/R2 persistence, identity isolation, publication, idempotence, validation, audio ranges and failure behavior against local Miniflare bindings.
+
+Secret discoveries use the separate `secrets.json` catalog and `compose-secrets.py`. Their synthesized instrumental recordings contain no sampled masters or vocals. Disco is a short-riff instrumental rework, Twilight is an original suspense cue, and Mary is a nursery-melody arrangement. Only unlocked tracks appear in Songs. Profile unlocks also authorize these IDs in published mixtapes; the normal starter cassette never gains secret tracks. Add future secret tracks to this separate catalog with a corresponding egg ID.
+
+## Friend phone and tape parcels
+
+`server/phone-api.mjs` implements authenticated calling-code lookup, durable text messages, call requests and tape delivery. Each profile receives a random public eight-digit calling code via `server/phone-line.mjs`; its salted private login passcode is never used as that calling code. A Site visitor must still have access to this private Site. The friend phone is available from the header and fullscreen controls. Call requests have ringing/accepted/declined states; they do not open a live voice connection. Future WebRTC signaling can build on a call ID and its recipient-only response boundary.
+
+The sending profile prepares a snapshot of its published cassette. Uploaded tracks are decoded locally, resampled to 16 kHz mono and encoded with four-bit IMA ADPCM in the app’s versioned `ATM1` container (`src/tape-codec.mjs`, roughly 64 kbit/s). An original MP3 is retained if it is already smaller; received ATM1 copies can be forwarded directly. This is a compact tape-quality copy, not preservation of the original stereo master. Published tapes support up to 50 entries; delivery supports uploaded tracks up to ten minutes each. Built-in songs reference the stable catalog assets.
+
+The server stores each uploaded delivery copy under its own parcel R2 key. Completing a parcel atomically inserts the recipient’s private track records and cassette, preserving order and duplicate entries. It never grants access to the sender’s library. Audio remains playable after the sender’s originals are removed. GET inbox exposes the sender’s unfinished plans and completed audio IDs so a reload can resume without re-encoding copies that already arrived. Audio upload and completion are idempotent. Switching profiles is blocked during sending. `tests/phone-api.test.mjs` checks these boundaries against real local D1 and R2, including independent source deletion and reconnection.
+
+Standalone secret front panels live in `public/secrets/front-*.png`, with explicit pixel coordinates in `secrets/front-controls.json` and a shared audio adapter in `src/secret-hardware.js`. Scene radios retain their scene-facing angle; zoom blends into the dedicated front panel. Each hidden instrument keeps separate live sound settings and restores the regular radio’s controls on exit. These assets and settings never enter the normal design enums, presets or randomization. Telephone discovery bypasses the secret selection shelf: synthesized classic mobile ringing, Unknown Caller LCD, then a fade directly into the matched scene.
+
+### Continuous EQ and touch front panels
+
+Playback now prepares and resumes the filter graph before starting the media element. Phone tones and music share one persistent context. The graph is assembled before the media source is claimed, so unsupported node creation cannot leave the native player routed into an incomplete graph. Supported browsers select the music `playback` audio-session category. Live EQ/tone/pan updates smooth only changed parameters; channel layout changes only when Mono changes. Interrupted contexts resume without creating another source. `tests/hardware-audio.test.mjs` exercises 125 live EQ updates, unchanged playback position/mute state, one source, interruption recovery and partial setup failure.
+
+Fullscreen defaults to an enlarged front-panel framing. **Full radio** restores the complete silhouette for the handle and antenna; **Front panel** enlarges the controls again. Secret framing bounds are kept with their control metadata. Both modes use the same framing for drawing, touch coordinates and scene zoom. The screen is the positioned parent of every hit layer, keeping controls aligned inside phone safe-area margins. Every visible fullscreen target expands to at least 44 CSS pixels; overlap is resolved by proximity to the actual control rather than DOM order. EQ drags retain their starting value, capture one pointer and cancel on resize, view changes or backgrounding. Paints coalesce per animation frame while audio values update immediately. A brief control reading provides touch feedback without bringing back the playback overlay.
+
+### Six hidden broadcasts
+
+The second trio uses public-domain melodies in original synthesized arrangements: Ode to Joy (`joy`), The Entertainer (`ragtime`), and Greensleeves (`woodland`). Regenerate only these with `python music/compose-new-secrets.py`; regenerating either secret group preserves the other group’s stable IDs. Their keypad signatures live in `secrets/tunes.json`. Each matched signature rings as Unknown Caller and fades directly into that theme. Twilight continues to unlock the complete secret catalog when dialed. No scene, front panel, or secret recording belongs in the regular scene enum, randomizer, starter catalog or starter tape.
+
+Each radio supplies its own EQ count, fader source positions and cassette reel geometry. Scene movement uses the shared 12-second phase, so ambient leaves, light and warped scenery patches meet exactly at the loop boundary. Profile discoveries authorize song selection and mixtape publication; received tapes remain independent of scene discovery.
+
+### Telephone list expansion
+
+`compose-songlist-secrets.py` regenerates only Hot Cross Buns (`buns`), Happy Birthday (`birthday`), Twinkle Twinkle (`star`) and Jingle Bells (`winter`), preserving all earlier secret catalog IDs. `secrets/song-checklist.md` tracks completed and remaining songs without revealing a locked collection in the ordinary GUI.
+
+The phone recognizes the supplied Twinkle opening `1199##96633221`. A # belonging to that melody stays in the rolling tune buffer and does not submit the profile/friend form; # outside a recognized melody prefix retains normal submission. The supplied Twilight `3631363136313631` and Funkytown `3323115963` sequences are aliases, so earlier codes still work. `tests/secret-keypad.test.mjs` checks every catalog tune plus these submission boundaries.

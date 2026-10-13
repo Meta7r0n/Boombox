@@ -1,0 +1,35 @@
+[
+  {
+    "id": "starter-sunset-circuit",
+    "title": "Sunset Circuit",
+    "artist": "Boombox Atelier Originals",
+    "description": "Warm synth-pop \u00b7 rooftop hour",
+    "duration": 76.85,
+    "bpm": 104,
+    "color": "#d48c65",
+    "url": "/music/sunset-circuit.mp3",
+    "source": "starter"
+  },
+  {
+    "id": "starter-midnight-local",
+    "title": "Midnight Local",
+    "artist": "Boombox Atelier Originals",
+    "description": "Electric keys \u00b7 after-hours train",
+    "duration": 86.48,
+    "bpm": 92,
+    "color": "#8199b7",
+    "url": "/music/midnight-local.mp3",
+    "source": "starter"
+  },
+  {
+    "id": "starter-saltwater-memory",
+    "title": "Saltwater Memory",
+    "artist": "Boombox Atelier Originals",
+    "description": "Soft coastal groove \u00b7 sea breeze",
+    "duration": 99.0,
+    "bpm": 80,
+    "color": "#8ab6a5",
+    "url": "/music/saltwater-memory.mp3",
+    "source": "starter"
+  }
+]

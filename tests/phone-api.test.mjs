@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import {readFile,readdir} from 'node:fs/promises';
+import {createRequire} from 'node:module';
+import {handlePhoneRequest} from '../server/phone-api.mjs';
+import {handleProfileRequest} from '../server/profile-api.mjs';
+import {handleMusicRequest} from '../server/music-api.mjs';
+import {encodeTape,decodeTape,tapeInfo} from '../src/tape-codec.mjs';
+const require=createRequire(import.meta.url),{Miniflare}=createRequire(require.resolve('wrangler/package.json'))('miniflare');
+const mf=new Miniflare({modules:true,script:'export default {fetch(){return new Response("test")}}',d1Databases:['DB'],r2Buckets:['BUCKET'],compatibilityDate:'2026-05-15'});
+const env={DB:await mf.getD1Database('DB'),BUCKET:await mf.getR2Bucket('BUCKET')};
+for(const file of (await readdir('drizzle')).filter(f=>f.endsWith('.sql')).sort())for(const q of (await readFile('drizzle/'+file,'utf8')).split('--> statement-breakpoint'))if(q.trim())await env.DB.prepare(q).run();
+const req=(path,data,user,extra={})=>new Request('https://test.local/api/'+path,{method:data?'POST':'GET',headers:{'oai-authenticated-user-id':user?.owner||'a',...(user?{'x-atelier-session':user.session,'x-atelier-profile':user.profile.id}:{}),...extra},...(data?{body:data instanceof FormData?data:JSON.stringify(data)}:{})});
+const phone=(path,data,user,extra)=>handlePhoneRequest(req('phone/'+path,data,user,extra),env),music=(path,data,user)=>handleMusicRequest(req(path,data,user),env);
+const create=async(name,code,owner)=>{const response=await handleProfileRequest(req('profile/create',{name,code},{owner,profile:{id:''}}),env);assert.equal(response.status,200);return{...await response.json(),owner}};
+let checks=0;
+try{
+ const a=await create('Alice','12345678','a'),b=await create('Bob','87654321','b'),c=await create('Charlie','11223344','a');
+ assert.notEqual(a.profile.callingCode,'12345678');assert.notEqual(b.profile.callingCode,'87654321');assert.match(a.profile.callingCode,/^\d{8}$/);checks++;
+ assert.equal((await phone('inbox')).status,401);assert.equal((await phone('resolve',{code:b.profile.callingCode},a,{origin:'https://evil.local'})).status,403);checks++;
+ assert.equal((await phone('resolve',{code:b.profile.callingCode},a)).status,200);assert.equal((await phone('resolve',{code:'87654321'},a)).status,404);checks++;
+ assert.equal((await phone('message',{code:b.profile.callingCode,body:'Hello cassette friend'},a)).status,200);
+ const call=await (await phone('call',{code:b.profile.callingCode},a)).json();let inbox=await (await phone('inbox',null,b)).json();assert.equal(inbox.messages.length,2);assert.equal(inbox.messages[0].direction,'incoming');assert.equal((await (await phone('inbox',null,c)).json()).messages.length,0);checks++;
+ assert.equal((await phone('respond',{id:call.id,status:'accepted'},c)).status,404);assert.equal((await phone('respond',{id:call.id,status:'accepted'},b)).status,200);assert.equal((await (await phone('inbox',null,a)).json()).messages.find(m=>m.id===call.id).status,'accepted');checks++;
+ const samples=Float32Array.from({length:16000},(_,i)=>Math.sin(i*2*Math.PI*440/16000)*.4),encoded=encodeTape(samples);assert.equal(tapeInfo(encoded).duration,1);assert(encoded.length<samples.byteLength/7);const wav=decodeTape(encoded),view=new DataView(wav.buffer);assert.equal(view.getUint32(24,true),16000);let error=0;for(let i=100;i<samples.length;i++)error+=Math.abs(view.getInt16(44+i*2,true)/32767-samples[i]);assert(error/(samples.length-100)<.012);assert.throws(()=>tapeInfo(encoded.slice(0,-1)));checks++;
+ const uploadId=crypto.randomUUID(),form=new FormData();form.append('id',uploadId);form.append('title','Sender recording');form.append('duration','1');form.append('audio',new File([wav],'song.wav',{type:'audio/wav'}));assert.equal((await music('tracks',form,a)).status,201);const cassetteId=crypto.randomUUID();assert.equal((await music('cassettes',{id:cassetteId,title:'Friend mix',color:'#8199b7',tracks:[uploadId,'starter-midnight-local',uploadId]},a)).status,201);checks++;
+ assert.equal((await phone('prepare-tape',{code:b.profile.callingCode,cassetteId},c)).status,404);
+ const planned=await (await phone('prepare-tape',{code:b.profile.callingCode,cassetteId},a)).json();assert.equal(planned.tracks.length,3);assert.equal((await (await phone('inbox',null,a)).json()).pending[0].parcelId,planned.parcelId);assert.equal((await phone('complete-tape',{parcelId:planned.parcelId},a)).status,400);checks++;
+ const delivery=new FormData();delivery.append('parcelId',planned.parcelId);delivery.append('sourceId',uploadId);delivery.append('audio',new File([encoded],'song.atelier'));
+ assert.equal((await phone('parcel-audio',delivery,c)).status,404);assert.equal((await phone('parcel-audio',delivery,a)).status,200);assert.equal((await phone('parcel-audio',delivery,a)).status,200);checks++;
+ const complete=await (await phone('complete-tape',{parcelId:planned.parcelId},a)).json();assert.equal(complete.sent,true);assert.equal((await (await phone('complete-tape',{parcelId:planned.parcelId},a)).json()).cassetteId,complete.cassetteId);checks++;
+ const library=await (await music('library',null,b)).json(),received=library.cassettes[0];assert.equal(library.cassettes.length,1);assert.equal(received.tracks[0].codec,'atelier-adpcm');assert.equal(library.tracks[0].codec,'atelier-adpcm');assert.notEqual(received.tracks[0].id,uploadId);assert.equal(received.tracks[0].id,received.tracks[2].id);assert.equal((await music(received.tracks[0].url.slice(5),null,a)).status,404);checks++;
+ const original=await env.DB.prepare('SELECT object_key FROM music_tracks WHERE id=?').bind(uploadId).first();await env.BUCKET.delete(original.object_key);await env.DB.prepare('DELETE FROM music_tracks WHERE id=?').bind(uploadId).run();const response=await music(received.tracks[0].url.slice(5),null,b);assert.equal(response.status,200);assert.deepEqual(new Uint8Array(await response.arrayBuffer()),encoded);checks++;
+ assert.equal((await music('cassettes',{id:crypto.randomUUID(),title:'Copied received mix',color:'#8199b7',tracks:[received.tracks[0].id]},b)).status,201);checks++;
+ const reconnect=await (await handleProfileRequest(req('profile/unlock',{code:'87654321'},{owner:'b',profile:{id:''}}),env)).json();assert.equal(reconnect.profile.callingCode,b.profile.callingCode);assert.equal((await (await music('library',null,{...reconnect,owner:'b'})).json()).cassettes.length,2);checks++;
+ const resend=await (await phone('prepare-tape',{code:c.profile.callingCode,cassetteId:received.id},b)).json();assert.equal(resend.tracks[0].mime,'audio/x-atelier-adpcm');checks++;
+ console.log(JSON.stringify({checks,status:'passed',coverage:['private passcodes separated from calling codes','cross-owner friends','messages and call requests','recipient-only answers','compact audio roundtrip','resumable and idempotent delivery','received tape independent of source deletion','reconnect persistence','received tape republishing']}));
+}finally{await mf.dispose()}

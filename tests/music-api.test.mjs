@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import {readFile,readdir} from 'node:fs/promises';
+import {createRequire} from 'node:module';
+import {handleMusicRequest} from '../server/music-api.mjs';
+const require=createRequire(import.meta.url),{Miniflare}=createRequire(require.resolve('wrangler/package.json'))('miniflare');
+const mf=new Miniflare({modules:true,script:'export default {fetch(){return new Response("test")}}',d1Databases:['DB'],r2Buckets:['BUCKET'],compatibilityDate:'2026-05-15'});
+const env={DB:await mf.getD1Database('DB'),BUCKET:await mf.getR2Bucket('BUCKET')};
+for(const file of (await readdir('drizzle')).filter(f=>f.endsWith('.sql')).sort())for(const sql of (await readFile('drizzle/'+file,'utf8')).split('--> statement-breakpoint'))if(sql.trim())await env.DB.prepare(sql).run();
+const request=(path,init={},user='test-owner')=>new Request('https://boombox.test'+path,{...init,headers:{...(user?{'oai-authenticated-user-id':user}:{}),...init.headers}});
+const call=(path,init,user)=>handleMusicRequest(request(path,init,user),env);
+let checks=0;
+try{
+ assert.equal((await call('/api/library',{},null)).status,401);checks++;
+ assert.equal((await call('/api/cassettes',{method:'POST',headers:{origin:'https://evil.test'},body:'{}'})).status,403);checks++;
+ assert.equal((await handleMusicRequest(request('/api/library'),{})).status,503);checks++;
+ const bytes=await readFile('public/music/sunset-circuit.mp3'),id=crypto.randomUUID();
+ const upload=()=>{const form=new FormData();form.append('audio',new File([bytes],'a song.mp3',{type:'audio/mpeg'}));form.append('title','My upload <safe>');form.append('duration','76.8');form.append('id',id);return {method:'POST',body:form}};
+ const first=await call('/api/tracks',upload());assert.equal(first.status,201);const track=(await first.json()).track;assert.equal(track.title,'My upload <safe>');checks++;
+ assert.equal((await call('/api/tracks',upload())).status,200);checks++;
+ const library=await (await call('/api/library')).json();assert.equal(library.tracks.length,1);assert.equal((await (await call('/api/library',{},'someone-else')).json()).tracks.length,0);checks++;
+ let audio=await call('/api/audio/'+id);assert.equal(audio.status,200);assert.deepEqual(Buffer.from(await audio.arrayBuffer()),bytes);checks++;
+ audio=await call('/api/audio/'+id,{headers:{range:'bytes=5-24'}});assert.equal(audio.status,206);assert.equal(audio.headers.get('content-range'),`bytes 5-24/${bytes.length}`);assert.deepEqual(Buffer.from(await audio.arrayBuffer()),bytes.subarray(5,25));checks++;
+ audio=await call('/api/audio/'+id,{headers:{range:'bytes=-8'}});assert.deepEqual(Buffer.from(await audio.arrayBuffer()),bytes.subarray(-8));checks++;
+ assert.equal((await call('/api/audio/'+id,{headers:{range:'bytes=999999999-'}})).status,416);assert.equal((await call('/api/audio/'+id,{headers:{range:'bytes=0-2,3-5'}})).status,416);checks++;
+ const head=await call('/api/audio/'+id,{method:'HEAD'});assert.equal(head.headers.get('content-length'),String(bytes.length));assert.equal((await head.text()).length,0);checks++;
+ assert.equal((await call('/api/audio/'+id,{},'someone-else')).status,404);checks++;
+ const cassetteId=crypto.randomUUID(),body={id:cassetteId,title:'Night train mix',color:'#8199b7',tracks:['starter-midnight-local',id,'starter-saltwater-memory',id]};
+ const publish=()=>({method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+ const response=await call('/api/cassettes',publish());assert.equal(response.status,201);const cassette=(await response.json()).cassette;assert.deepEqual(cassette.tracks.map(t=>t.id),body.tracks);checks++;
+ assert.equal((await call('/api/cassettes',publish())).status,200);assert.equal((await (await call('/api/library')).json()).cassettes.length,1);checks++;
+ assert.equal((await (await call('/api/library',{},'someone-else')).json()).cassettes.length,0);checks++;
+ assert.equal((await call('/api/cassettes',publish(),'someone-else')).status,400);checks++;
+ for(const patch of [{title:''},{color:'red'},{tracks:[]},{tracks:['nonexistent']},{tracks:Array(51).fill(id)}]){const data={...body,id:crypto.randomUUID(),...patch};assert.equal((await call('/api/cassettes',{method:'POST',body:JSON.stringify(data)})).status,400);checks++}
+ const fake=new FormData();fake.append('id',crypto.randomUUID());fake.append('title','fake');fake.append('duration','10');fake.append('audio',new File(['plain text'],'fake.mp3'));assert.equal((await call('/api/tracks',{method:'POST',body:fake})).status,400);checks++;
+ const wav=Buffer.alloc(46);wav.write('RIFF');wav.writeUInt32LE(38,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(2,40);
+ const form=new FormData();form.append('id',crypto.randomUUID());form.append('title','WAV fixture');form.append('duration','1');form.append('audio',new File([wav],'fixture.wav'));const waveResponse=await call('/api/tracks',{method:'POST',body:form});assert.equal(waveResponse.status,201);const waveTrack=(await waveResponse.json()).track;assert.equal((await call(waveTrack.url)).headers.get('content-type'),'audio/wav');checks++;
+ const failEnv={DB:env.DB,BUCKET:{put:async()=>{throw Error('fixture storage failure')}}};const failForm=new FormData();failForm.append('id',crypto.randomUUID());failForm.append('title','Retry me');failForm.append('duration','1');failForm.append('audio',new File([wav],'retry.wav'));assert.equal((await handleMusicRequest(request('/api/tracks',{method:'POST',body:failForm}),failEnv)).status,503);checks++;
+ const retryBody={...body,id:crypto.randomUUID(),title:'Interrupted save retry'};
+ const repeated=await Promise.all([0,1].map(()=>call('/api/cassettes',{method:'POST',body:JSON.stringify(retryBody)})));
+ assert(repeated.every(r=>[200,201].includes(r.status)));const repeatedBodies=await Promise.all(repeated.map(r=>r.json()));assert.deepEqual(repeatedBodies[0].cassette,repeatedBodies[1].cassette);
+ const retryLibrary=await (await call('/api/library')).json();assert.equal(retryLibrary.cassettes.filter(t=>t.id===retryBody.id).length,1);checks++;
+ console.log(JSON.stringify({checks,status:'passed',coverage:['real D1 and R2 persistence','MP3 and WAV','ordered cassette publication','idempotent saves','owner isolation','seek ranges and HEAD','invalid files and drafts surviving storage errors']}));
+}finally{await mf.dispose()}
