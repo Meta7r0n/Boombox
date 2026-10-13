@@ -59,7 +59,15 @@ The visual workshop can render locally. Profiles, saved uploads, tape delivery a
 
 ## Tests
 
-After installing dependencies:
+After installing dependencies, run every test and the production build together:
+
+```sh
+pnpm check
+```
+
+Use `pnpm test` for the eight test suites only. GitHub Actions runs `pnpm check` on pull requests and pushes to `main`; the workflow can also be run manually after it is merged. Each API test uses a separate temporary database, and the test runner executes suites one at a time. The workflow does not deploy or require production credentials.
+
+To run an individual suite:
 
 ```sh
 node tests/hardware-audio.test.mjs
