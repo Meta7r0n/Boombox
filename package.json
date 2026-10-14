@@ -1,5 +1,5 @@
 {
-  "name": "boombox-atelier",
+  "name": "oto",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -13,7 +13,10 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
-    "check": "pnpm run test && pnpm run build"
+    "check": "pnpm run test && pnpm run build && pnpm run cloudflare:validate",
+    "build:cloudflare": "node scripts/prepare-music.mjs && node scripts/build-cloudflare.mjs",
+    "dev:cloudflare": "pnpm build:cloudflare && wrangler dev --config wrangler.oto.jsonc --env local --port 8787",
+    "cloudflare:validate": "pnpm build:cloudflare && wrangler deploy --config wrangler.oto.jsonc --env=\"\" --dry-run --outdir dist/worker-check"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
