@@ -82,6 +82,14 @@ node tests/radio-api.test.mjs
 
 The API tests use temporary Miniflare D1/R2 stores and apply the committed migrations. They do not connect to player data in the live app. Radio coverage includes competing host reservations, ownership, clock controls, compressed audio/ranges, check-ins and hard expiry. Physical two-device/iOS testing is still needed for browser timing, background suspension and speech behavior.
 
+## GitHub Pages launch
+
+The root `index.html` automatically opens the [full hosted app](https://boombox-atelier.meta7r0n.chatgpt.site). It includes an Enter button if automatic navigation is blocked, and requires no build or external assets. GitHub Pages serves this entry point instead of rendering the README.
+
+After merging the Pages launch fix, use **Settings → Pages → Deploy from a branch → main → / (root)**. The project URL is **https://meta7r0n.github.io/Boombox/**. Wait for the Pages deployment to finish, then refresh that URL.
+
+Pages is the launch address; the app and its authenticated APIs still run on the existing hosted Site. Sign in to ChatGPT if prompted. Access remains governed by the Site's existing sharing settings. This does not move player data or change who can access the app. Future app source changes need a separate deployment to the hosted Site.
+
 ## Hosting and data
 
 The current live app runs through Sites on Cloudflare Workers, with D1 (`DB`) for profiles/library/radio records and R2 (`BUCKET`) for user audio and compressed copies. `.openai/hosting.json` identifies the existing Site and its logical bindings; it contains no login token or player collection.
