@@ -1,8 +1,16 @@
-# Boombox Atelier
+# oto · 音
 
 Build a custom cartoon boombox in a cel-shaded 1980s/90s anime world, publish cassette mixtapes, discover hidden stations, and host timed community-radio programs.
 
 [Live app](https://boombox-atelier.meta7r0n.chatgpt.site)
+
+## Cloudflare website player branch
+
+This branch adds the standalone **oto** Worker target, a persistent top/bottom music dock, website browsing shell, expandable scenery, and pop-out listening. Players choose either **oto** or **音** as the stereo logo; the choice is saved with the design and applies to regular and secret stereos. Older designs request a choice when opened.
+
+Run `pnpm build:cloudflare` to prepare the static assets, or `pnpm cloudflare:validate` to also bundle the Worker without deployment. `pnpm check` now covers the original app and the standalone Worker target. No Cloudflare account, database, website or DNS configuration is performed by these build commands.
+
+See [the Cloudflare integration guide](docs/cloudflare-oto.md) for local testing, sign-in configuration and adding oto to an existing website. The original Sites target and existing live data remain separate until deployment is set up.
 
 ## What is included
 
@@ -65,7 +73,7 @@ After installing dependencies, run every test and the production build together:
 pnpm check
 ```
 
-Use `pnpm test` for the eight test suites only. GitHub Actions runs `pnpm check` on pull requests and pushes to `main`; the workflow can also be run manually after it is merged. Each API test uses a separate temporary database, and the test runner executes suites one at a time. The workflow does not deploy or require production credentials.
+Use `pnpm test` for all regression suites. GitHub Actions runs `pnpm check` on pull requests and pushes to `main`; the workflow can also be run manually after it is merged. Each API test uses a separate temporary database, and the test runner executes suites one at a time. The workflow does not deploy or require production credentials.
 
 To run an individual suite:
 

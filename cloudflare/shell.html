@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>oto · 音 — Listen while you explore</title>
+  <meta name="description" content="Your cassette collection and community radio, always within reach.">
+  <style>
+    :root{font-family:Arial,sans-serif;color:#f8f1df;background:#172a2c;--oto-dock-space:86px}*{box-sizing:border-box}body{margin:0;padding-bottom:var(--oto-dock-space)}:root[data-oto-dock=top] body{padding-top:var(--oto-dock-space);padding-bottom:0}
+    header{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:16px 24px;border-bottom:3px solid #ff9860;background:#172a2c}h1{margin:0;font-size:30px;letter-spacing:-1px}h1 span{color:#ff9860}nav{display:flex;flex-wrap:wrap;gap:8px;flex:1}a,button{font:inherit;color:inherit}a,button{padding:10px 14px;border:1px solid #5d7571;border-radius:7px;background:#244346;text-decoration:none;cursor:pointer}button:hover,a:hover{background:#375d56}button:focus-visible,a:focus-visible{outline:3px solid #ff9860;outline-offset:3px}
+    #site-frame{width:100%;height:calc(100dvh - 82px - var(--oto-dock-space));border:0;background:#fafaf1;display:block}#welcome{max-width:800px;margin:8vh auto;padding:28px}h2{font-size:clamp(32px,6vw,58px);line-height:1.1;letter-spacing:-2px}p{font-size:18px;line-height:1.6;color:#c4d5cc}.tag{font-family:monospace;color:#ff9860;letter-spacing:3px}#welcome button{background:#ff9860;color:#172a2c;font-weight:bold;margin:20px 0}#site-frame[hidden],#welcome[hidden]{display:none}@media(max-width:760px){header{padding:10px 12px;gap:8px}header button{font-size:12px}h1{font-size:24px}:root{--oto-dock-space:120px}#site-frame{height:calc(100dvh - 112px - var(--oto-dock-space))}}
+  </style>
+</head>
+<body>
+  <header><h1>oto <span>音</span></h1><nav id="site-navigation" aria-label="Website sections"></nav><button id="open-player">Open player</button><a href="/app/" target="_blank" rel="noopener">Standalone app</a></header>
+  <iframe id="site-frame" title="Website content" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-presentation" allow="fullscreen" allowfullscreen hidden></iframe>
+  <main id="welcome"><p class="tag">A LITTLE RADIO. YOUR WHOLE WORLD.</p><h2>Press play.<br>Stay a while.</h2><p>Build your stereo, load a cassette or tune into a station. Your music stays with you while you explore.</p><button id="welcome-open">Enter oto · 音</button><p id="setup-note">The website connection is ready to configure. Your workshop and starter cassette are available below.</p></main>
+  <script src="/oto/embed.js" data-player="/app/" data-dock="bottom"></script>
+  <script>
+    const config=window.OTO_CONFIG||{},frame=document.querySelector('#site-frame'),nav=document.querySelector('#site-navigation');
+    const navigate=path=>{if(!config.siteOrigin)return;const url=new URL(path,config.siteOrigin);if(url.origin!==config.siteOrigin)return;frame.hidden=false;document.querySelector('#welcome').hidden=true;frame.src=url.href;};
+    for(const page of config.pages||[]){const link=document.createElement('a');link.textContent=page.label;link.href=new URL(page.path,config.siteOrigin).href;link.addEventListener('click',event=>{event.preventDefault();navigate(page.path);});nav.append(link);}
+    if(config.siteOrigin){const home=document.createElement('a');home.textContent='Home';home.href=config.siteOrigin;home.addEventListener('click',event=>{event.preventDefault();navigate('/');});nav.prepend(home);navigate('/');}
+    for(const id of ['open-player','welcome-open'])document.querySelector('#'+id).addEventListener('click',()=>window.oto.expand());
+  </script>
+</body>
+</html>

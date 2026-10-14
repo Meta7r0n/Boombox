@@ -21,4 +21,11 @@ html=html.replace(/\/\/ Real recordings use[\s\S]*?(?=\/\/ Direct boombox hardwa
 html=html.replace(/<script id="starter-catalog" type="application\/json">[\s\S]*?<\/script>/,'<script id="starter-catalog" type="application/json">'+JSON.stringify(catalog).replace(/</g,'\\u003c')+'</script>');
 const radio='// Community radio runtime.\n'+(await readFile('src/radio-core.mjs','utf8')).replaceAll('export ','')+'\n'+await readFile('src/radio.js','utf8');
 if(html.includes('// Community radio runtime.'))html=html.replace(/\/\/ Community radio runtime\.[\s\S]*?\/\/ End community radio\./,()=>radio.trim());else html=html.replace('// End direct boombox hardware.',()=> '// End direct boombox hardware.\n'+radio.trim());
+const branding=await readFile('src/branding.js','utf8');
+const player='// Persistent oto player.\n'+(await readFile('src/oto-core.mjs','utf8')).replaceAll('export ','')+'\n'+(await readFile('src/oto-player.js','utf8')).replace('// Persistent oto player.','');
+for(const [marker,end,code] of [['oto stereo branding.','End oto stereo branding.',branding],['Persistent oto player.','End persistent oto player.',player]]){
+ const start='// '+marker,finish='// '+end;
+ if(html.includes(start)){const begin=html.indexOf(start),stop=html.indexOf(finish,begin)+finish.length;html=html.slice(0,begin)+code.trim()+html.slice(stop)}
+ else html=html.replace('syncControls();draw();render($(\'#intro-art\')',()=>code.trim()+'\n'+'syncControls();draw();render($(\'#intro-art\')');
+}
 await writeFile('src/index.html',html);
