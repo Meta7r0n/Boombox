@@ -1,8 +1,8 @@
-# Boombox Atelier
+# oto · 音
 
 Build a custom cartoon boombox in a cel-shaded 1980s/90s anime world, publish cassette mixtapes, discover hidden stations, and host timed community-radio programs.
 
-[Live app](https://boombox-atelier.meta7r0n.chatgpt.site)
+[Stable Pages app](https://meta7r0n.github.io/Boombox/)
 
 ## What is included
 
@@ -65,7 +65,7 @@ After installing dependencies, run every test and the production build together:
 pnpm check
 ```
 
-Use `pnpm test` for the eight test suites only. GitHub Actions runs `pnpm check` on pull requests and pushes to `main`; the workflow can also be run manually after it is merged. Each API test uses a separate temporary database, and the test runner executes suites one at a time. The workflow does not deploy or require production credentials.
+Use `pnpm test` for all regression suites. GitHub Actions runs `pnpm check` on pull requests and pushes to `main`; the workflow can also be run manually after it is merged. Each API test uses a separate temporary database, and the test runner executes suites one at a time. The workflow does not deploy or require production credentials.
 
 To run an individual suite:
 
@@ -82,13 +82,17 @@ node tests/radio-api.test.mjs
 
 The API tests use temporary Miniflare D1/R2 stores and apply the committed migrations. They do not connect to player data in the live app. Radio coverage includes competing host reservations, ownership, clock controls, compressed audio/ranges, check-ins and hard expiry. Physical two-device/iOS testing is still needed for browser timing, background suspension and speech behavior.
 
-## GitHub Pages launch
+## GitHub Pages stable app
 
-The root `index.html` automatically opens the [full hosted app](https://boombox-atelier.meta7r0n.chatgpt.site). It includes an Enter button if automatic navigation is blocked, and requires no build or external assets. GitHub Pages serves this entry point instead of rendering the README.
+Open **https://meta7r0n.github.io/Boombox/**. This runs directly on GitHub Pages and does not redirect to Sites or require an OpenAI login.
 
-After merging the Pages launch fix, use **Settings → Pages → Deploy from a branch → main → / (root)**. The project URL is **https://meta7r0n.github.io/Boombox/**. Wait for the Pages deployment to finish, then refresh that URL.
+The Pages device edition supports the workshop, atmosphere/fullscreen views, stereo controls, original songs, MP3/WAV imports, local phone profiles, saved mixtapes, hidden discoveries and design/image exports. IndexedDB stores profiles, audio blobs and cassettes in this browser. The same passcode restores its collection on this device; it does not sync across devices. Clearing site data removes those local records, and private browsing storage is temporary.
 
-Pages is the launch address; the app and its authenticated APIs still run on the existing hosted Site. Sign in to ChatGPT if prompted. Access remains governed by the Site's existing sharing settings. This does not move player data or change who can access the app. Future app source changes need a separate deployment to the hosted Site.
+Shared radio, friend messaging and tape delivery require a backend and are disabled in the device edition. The separate [Cloudflare integration branch](https://github.com/Meta7r0n/Boombox/tree/feature/oto-cloudflare-player) is prepared for those online features. It is not deployed or merged into this Pages build.
+
+Use **Settings → Pages → Deploy from a branch → main → / (root)**. The committed root `index.html` is the app, with project-relative artwork and audio under `public/`; `.nojekyll` bypasses README rendering. Rebuild the Pages entry with `pnpm build:pages` after editing the canonical modules. `pnpm check` runs regression tests and both framework/Pages builds.
+
+See [device edition details](docs/pages-device-edition.md).
 
 ## Hosting and data
 
