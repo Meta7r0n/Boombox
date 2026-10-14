@@ -1,5 +1,5 @@
 {
-  "name": "boombox-atelier",
+  "name": "oto",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -13,7 +13,8 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
-    "check": "pnpm run test && pnpm run build"
+    "check": "pnpm run test && pnpm run build && pnpm run build:pages",
+    "build:pages": "node scripts/prepare-music.mjs && node scripts/build-pages.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
