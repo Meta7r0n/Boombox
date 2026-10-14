@@ -63,3 +63,8 @@ const branding=await readFile('src/branding.js','utf8');
 const drawCode=branding.slice(branding.indexOf('function drawStereoLogo'),branding.indexOf('function openOtoLogoPicker'));
 let ink;const c={save(){},restore(){},translate(){},fillText(){ink=this.fillStyle}};
 const art={rect(ctx){ctx.fillStyle='#193738';},Path2D:class{}};vm.createContext(art);vm.runInContext(drawCode,art);art.drawStereoLogo(c,{logo:'oto',outline:3},10,30,20);assert.equal(ink,'#f4ecd7');
+
+// Splash customization safely closes even if the preview focus target is absent.
+const profileCode=await readFile('src/profiles.js','utf8');
+const custom=profileCode.match(/\$\('#enter-customize'\)\.addEventListener\('click',(\(\)=>\{[^}]*\})\);/)[1];
+const splash={introClose(){},$(){return null}};vm.createContext(splash);vm.runInContext('('+custom+')()',splash);
